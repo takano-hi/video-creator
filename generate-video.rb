@@ -1,6 +1,6 @@
 VIDEO_TITLE = ENV["TITLE"]
 
-CONVERSATION_INTERVAL = 0.3
+CONVERSATION_INTERVAL = 0.2
 CUSTOM_BR_CODE = "{br}"
 
 MERGED_AUDIO_FILENAME = "merged.mp3"
@@ -69,7 +69,7 @@ class VideoGenerator
     silence_option = audio_filepaths.length.times.map.with_index { |i| "[s#{i}]" }.join("")
     output_path = File.join(dirname, MERGED_AUDIO_FILENAME)
 
-    "ffmpeg #{audio_inputs} -filter_complex \"anullsrc=r=44100:cl=stereo:d=0.2,asplit=#{audio_filepaths.length}#{silence_option}; #{merge_option}:v=0:a=1[out]\" -map \"[out]\" #{output_path}"
+    "ffmpeg #{audio_inputs} -filter_complex \"anullsrc=r=44100:cl=stereo:d=#{CONVERSATION_INTERVAL},asplit=#{audio_filepaths.length}#{silence_option}; #{merge_option}:v=0:a=1[out]\" -map \"[out]\" #{output_path}"
   end
 
   def merge_audio
@@ -128,10 +128,9 @@ class VideoGenerator
       { speaker: speaker, text: text }
     end
 
-    prev_end_time = 0.3
+    prev_end_time = CONVERSATION_INTERVAL
     dialogues = file_data.map.with_index do |data, i|
-      interval = CONVERSATION_INTERVAL * 0.7
-      start_time = i > 0 ? prev_end_time + interval : prev_end_time
+      start_time = i > 0 ? prev_end_time + CONVERSATION_INTERVAL : prev_end_time
       end_time = start_time + data[:length]
 
       prev_end_time = end_time
