@@ -1,0 +1,24 @@
+# Ignore bundler config.
+/.bundle
+
+# Ignore all environment files.
+/.env*
+
+# Ignore application configuration
+/config/master.key
+/config/credentials/*.key
+
+# Ignore all logfiles and tempfiles.
+/log/*
+!/log/.keep
+
+/tmp/*
+!/tmp/.keep
+
+# Ignore storage (uploaded files in development and any SQLite databases).
+/storage/*
+!/storage/.keep
+/storage/*.sqlite3
+
+# Ignore master key for decrypting credentials and more.
+/config/master.key
