@@ -38,6 +38,32 @@ class McpController < ApplicationController
       }
     },
     {
+      name: "generate_subtitle_csv",
+      description: "スピーカー名とテキストの行リストを受け取り、指定ディレクトリに subtitle.csv を生成する",
+      inputSchema: {
+        type: "object",
+        properties: {
+          directory: {
+            type: "string",
+            description: "subtitle.csv を保存するディレクトリの絶対パス"
+          },
+          lines: {
+            type: "array",
+            description: "字幕の行リスト（音声ファイルと同順）",
+            items: {
+              type: "object",
+              properties: {
+                speaker: { type: "string", description: "スピーカー名（例: ずんだもん）" },
+                text:    { type: "string", description: "字幕テキスト" }
+              },
+              required: ["speaker", "text"]
+            }
+          }
+        },
+        required: ["directory", "lines"]
+      }
+    },
+    {
       name: "generate_video",
       description: "指定ディレクトリ内の cover.png / subtitle.csv / *.wav から video.mp4 を生成する",
       inputSchema: {
@@ -93,6 +119,9 @@ class McpController < ApplicationController
       items = (_args["items"] || []).map { |i| { speaker: i["speaker"], text: i["text"] } }
       paths = generate_audio(items)
       { content: [ { type: "text", text: JSON.pretty_generate(paths) } ] }
+    when "generate_subtitle_csv"
+      output_path = write_subtitle_csv(_args["directory"], _args["lines"] || [])
+      { content: [ { type: "text", text: output_path } ] }
     when "generate_video"
       output_path = run_generate_video(_args["directory"])
       { content: [ { type: "text", text: output_path } ] }
@@ -121,6 +150,18 @@ class McpController < ApplicationController
       File.binwrite(output_path, synth_res.body)
       output_path
     end
+  end
+
+  # --- generate_subtitle_csv ---
+
+  def write_subtitle_csv(dir, lines)
+    raise "Directory not found: #{dir}" unless Dir.exist?(dir)
+
+    output_path = File.join(dir, "subtitle.csv")
+    content = lines.map { |l| "#{l["speaker"]},#{l["text"]}" }.join("\n")
+    File.write(output_path, content)
+
+    output_path
   end
 
   # --- generate_video ---
