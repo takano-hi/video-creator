@@ -1,0 +1,26 @@
+services:
+  web:
+    build: ./mcp
+    ports:
+      - "3000:80"
+    environment:
+      VOICEVOX_BASE_URL: http://voicevox:50021
+    volumes:
+      - ./mcp/config/master.key:/rails/config/master.key:ro
+      - ./mcp/storage:/rails/storage
+      - ./mcp/tmp:/rails/tmp
+    depends_on:
+      voicevox:
+        condition: service_healthy
+
+  voicevox:
+    image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+    platform: linux/amd64
+    ports:
+      - "50021:50021"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50021/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

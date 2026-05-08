@@ -3,7 +3,7 @@ require "json"
 require "shellwords"
 
 class McpController < ApplicationController
-  VOICEVOX_BASE        = "http://localhost:50021"
+  VOICEVOX_BASE        = ENV.fetch("VOICEVOX_BASE_URL", "http://localhost:50021")
   CONVERSATION_INTERVAL = 0.2
   CUSTOM_BR_CODE       = "{br}"
 
