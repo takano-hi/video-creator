@@ -37,6 +37,18 @@ curl http://localhost:3000/up
 
 設定後、Claude Code を再起動すると `generate_audio` / `generate_subtitle_csv` / `generate_video` ツールが利用できるようになる。
 
+### 3. Google Slides API を設定する（`import_json_from_google_slides` を使う場合）
+
+1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクトを作成し、**Google Slides API** を有効化する
+2. 「IAM と管理」→「サービスアカウント」からサービスアカウントを作成し、JSON キーをダウンロードする
+3. ダウンロードした JSON ファイルの内容を `env/api.env` に以下の形式で設定する
+
+```
+GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"..."}
+```
+
+> JSON 内の改行や特殊文字が問題になる場合は、一行に整形した上で設定する。
+
 ## 毎回の作業
 
 ### 1. cover.png を所定の場所に置く
@@ -75,9 +87,10 @@ Claudeがスクリプト作成 → 音声生成 → 字幕生成 → 動画生�
 
 ## MCP ツール一覧
 
-| ツール名                | 説明                                               |
-| ----------------------- | -------------------------------------------------- |
-| `get_speakers`          | 利用可能なスピーカー一覧を返す                     |
-| `generate_audio`        | テキストリストから WAV ファイルを生成する          |
-| `generate_subtitle_csv` | 字幕 CSV を生成する                                |
-| `generate_video`        | cover.png + subtitle.csv + WAV から MP4 を生成する |
+| ツール名                          | 説明                                               |
+| --------------------------------- | -------------------------------------------------- |
+| `get_speakers`                    | 利用可能なスピーカー一覧を返す                     |
+| `generate_audio`                  | テキストリストから WAV ファイルを生成する          |
+| `generate_subtitle_csv`           | 字幕 CSV を生成する                                |
+| `generate_video`                  | cover.png + subtitle.csv + WAV から MP4 を生成する |
+| `import_json_from_google_slides`  | Google Slides の内容を JSON としてインポートする   |

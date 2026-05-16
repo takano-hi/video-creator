@@ -1,15 +1,18 @@
 services:
   api:
-    build: ./mcp
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile.dev
     ports:
       - "3000:80"
+    env_file:
+      - env/api.env
     environment:
       RAILS_ENV: development
       VOICEVOX_BASE_URL: http://voicevox:50021
     volumes:
+      - ./mcp:/rails
       - ./mcp/config/master.key:/rails/config/master.key:ro
-      - ./mcp/storage:/rails/storage
-      - ./mcp/tmp:/rails/tmp
     depends_on:
       voicevox:
         condition: service_healthy
