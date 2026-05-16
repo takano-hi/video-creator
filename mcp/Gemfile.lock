@@ -192,6 +192,8 @@ GEM
       prism (~> 1.5)
     msgpack (1.8.0)
     multi_json (1.21.1)
+    natto (1.2.0)
+      ffi (>= 1.9.0)
     net-http (0.9.1)
       uri (>= 0.11.1)
     net-imap (0.6.4)
@@ -403,6 +405,7 @@ DEPENDENCIES
   google-apis-slides_v1
   image_processing (~> 1.2)
   kamal
+  natto
   puma (>= 5.0)
   rails (~> 8.1.3)
   rubocop-rails-omakase

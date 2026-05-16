@@ -33,6 +33,7 @@ gem "thruster", require: false
 gem "image_processing", "~> 1.2"
 
 gem "google-apis-slides_v1", require: "google/apis/slides_v1"
+gem "natto"
 
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 # gem "rack-cors"

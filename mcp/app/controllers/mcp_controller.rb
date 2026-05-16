@@ -13,6 +13,10 @@ class McpController < ApplicationController
       inputSchema: {
         type: "object",
         properties: {
+          directory: {
+            type: "string",
+            description: "音声ファイルを保存するディレクトリの絶対パス（省略時はタイムスタンプ付きの一時ディレクトリを自動生成）"
+          },
           items: {
             type: "array",
             description: "生成する音声のリスト",
@@ -63,7 +67,7 @@ class McpController < ApplicationController
         properties: {
           directory: {
             type: "string",
-            description: "cover.png または google-slides.json・subtitle.csv・*.wav が格納されたディレクトリの絶対パス（出力先も同じ）"
+            description: "動画素材が格納されたディレクトリの絶対パス（出力先も同じ）。cover.png を使う場合は subtitle.csv と *.wav が必要。google-slides.json を使う場合は *.wav のみ必要"
           }
         },
         required: ["directory"]
@@ -127,7 +131,7 @@ class McpController < ApplicationController
       { content: [ { type: "text", text: JSON.pretty_generate(speakers) } ] }
     when "generate_audio"
       items = (_args["items"] || []).map { |i| { speaker: i["speaker"], text: i["text"] } }
-      paths = generate_audio(items)
+      paths = generate_audio(items, _args["directory"])
       { content: [ { type: "text", text: JSON.pretty_generate(paths) } ] }
     when "generate_subtitle_csv"
       output_path = write_subtitle_csv(_args["directory"], _args["lines"] || [])
@@ -145,9 +149,9 @@ class McpController < ApplicationController
 
   # --- generate_audio ---
 
-  def generate_audio(items)
-    output_dir = Rails.root.join("tmp", Time.now.strftime("%Y%m%d_%H%M%S")).to_s
-    Dir.mkdir(output_dir)
+  def generate_audio(items, directory = nil)
+    output_dir = directory || Rails.root.join("tmp", Time.now.strftime("%Y%m%d_%H%M%S")).to_s
+    Dir.mkdir(output_dir) unless Dir.exist?(output_dir)
 
     items.each_with_index.map do |item, i|
       output_path = File.join(output_dir, "audio#{(i + 1).to_s.rjust(3, "0")}.wav")
@@ -168,13 +172,7 @@ class McpController < ApplicationController
   # --- generate_subtitle_csv ---
 
   def write_subtitle_csv(dir, lines)
-    raise "Directory not found: #{dir}" unless Dir.exist?(dir)
-
-    output_path = File.join(dir, "subtitle.csv")
-    content = lines.map { |l| "#{l["speaker"]},#{l["text"]}" }.join("\n")
-    File.write(output_path, content)
-
-    output_path
+    GenerateSubtitleCsvService.new(dir, lines).call
   end
 
   # --- VOICEVOX HTTP helpers ---

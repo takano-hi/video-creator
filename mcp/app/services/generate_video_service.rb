@@ -11,16 +11,19 @@ class GenerateVideoService
   def call
     validate_video_inputs!
 
+    slides_mode = File.exist?(File.join(@dir, "google-slides.json"))
+
     wav_files = Dir.glob(File.join(@dir, "*.wav")).sort
 
     clear_video_outputs
+    generate_subtitle_csv_from_slides if slides_mode
     merge_audio_files(wav_files)
 
     subtitles = parse_subtitles(wav_files)
     write_ass_subtitle(subtitles)
     write_srt_subtitle(subtitles)
 
-    assemble_video
+    slides_mode ? assemble_video_from_slides(wav_files) : assemble_video
 
     File.join(@dir, "video.mp4")
   end
@@ -40,14 +43,24 @@ class GenerateVideoService
         path = File.expand_path(slide["thumbnail"].to_s, @dir)
         raise "thumbnail not found: #{path}" unless File.exist?(path)
       end
+    else
+      raise "subtitle.csv not found in #{@dir}" unless File.exist?(File.join(@dir, "subtitle.csv"))
     end
-
-    raise "subtitle.csv not found in #{@dir}" unless File.exist?(File.join(@dir, "subtitle.csv"))
     raise "No .wav files found in #{@dir}" if Dir.glob(File.join(@dir, "*.wav")).empty?
   end
 
+  def generate_subtitle_csv_from_slides
+    slides = JSON.parse(File.read(File.join(@dir, "google-slides.json")))
+    lines = slides.flat_map do |slide|
+      (slide["speaker_notes"] || []).map { |n| { "speaker" => n["speaker"], "text" => n["statement"] } }
+    end
+    GenerateSubtitleCsvService.new(@dir, lines).call
+  end
+
   def clear_video_outputs
-    %w[merged.mp3 subtitle.ass subtitle.srt video.mp4].each do |f|
+    files = %w[merged.mp3 subtitle.ass subtitle.srt video.mp4]
+    files += %w[subtitle.csv] if File.exist?(File.join(@dir, "google-slides.json"))
+    files.each do |f|
       path = File.join(@dir, f)
       File.delete(path) if File.exist?(path)
     end
@@ -67,16 +80,37 @@ class GenerateVideoService
     system(cmd)
   end
 
-  def cover_image_path
-    return File.join(@dir, "cover.png") if File.exist?(File.join(@dir, "cover.png"))
-
+  def assemble_video_from_slides(wav_files)
     slides = JSON.parse(File.read(File.join(@dir, "google-slides.json")))
-    thumbnail = slides.dig(0, "thumbnail") || raise("thumbnail not found in google-slides.json")
-    File.expand_path(thumbnail, @dir)
+
+    offset = 0
+    slide_clips = slides.filter_map do |slide|
+      count = (slide["speaker_notes"] || []).length
+      wavs  = wav_files[offset, count] || []
+      offset += count
+      next if wavs.empty?
+
+      duration  = wavs.sum { |f| `ffprobe -i #{Shellwords.escape(f)} -show_entries format=duration -v quiet -of csv="p=0"`.to_f }
+      duration += count * CONVERSATION_INTERVAL
+      { image: File.expand_path(slide["thumbnail"].to_s, @dir), duration: duration }
+    end
+
+    n        = slide_clips.length
+    inputs   = slide_clips.map { |c| "-loop 1 -t #{c[:duration]} -i #{Shellwords.escape(c[:image])}" }.join(" ")
+    concat   = n.times.map { |i| "[#{i}:v]" }.join("")
+    subtitle = File.join(@dir, "subtitle.ass")
+    audio    = Shellwords.escape(File.join(@dir, "merged.mp3"))
+    output   = Shellwords.escape(File.join(@dir, "video.mp4"))
+
+    cmd = "ffmpeg #{inputs} -i #{audio} " \
+          "-filter_complex \"#{concat}concat=n=#{n}:v=1:a=0[v];[v]ass=#{subtitle}[vout]\" " \
+          "-map \"[vout]\" -map \"#{n}:a\" " \
+          "-c:v libx264 -c:a aac -b:a 192k -shortest -pix_fmt yuv420p #{output}"
+    system(cmd)
   end
 
   def assemble_video
-    cover    = Shellwords.escape(cover_image_path)
+    cover    = Shellwords.escape(File.join(@dir, "cover.png"))
     audio    = Shellwords.escape(File.join(@dir, "merged.mp3"))
     subtitle = File.join(@dir, "subtitle.ass")
     output   = Shellwords.escape(File.join(@dir, "video.mp4"))
@@ -85,14 +119,20 @@ class GenerateVideoService
            "-c:v libx264 -tune stillimage -c:a aac -b:a 192k -shortest -pix_fmt yuv420p #{output}")
   end
 
+  PLAY_RES_X  = 384
+  FONT_SIZE   = 12
+  MAX_LINE_WIDTH = PLAY_RES_X * 0.8
+
   def parse_subtitles(wav_files)
     csv_rows = File.read(File.join(@dir, "subtitle.csv")).split("\n")
+    slides_mode = File.exist?(File.join(@dir, "google-slides.json"))
 
     prev_end_time = CONVERSATION_INTERVAL
     wav_files.each_with_index.map do |filepath, i|
       length = `ffprobe -i #{Shellwords.escape(filepath)} -show_entries format=duration -v quiet -of csv="p=0"`.to_f
 
       speaker, text = csv_rows[i].split(",")
+      text = wrap_text(text) if slides_mode
       start_time    = i > 0 ? prev_end_time + CONVERSATION_INTERVAL : prev_end_time
       end_time      = start_time + length
       prev_end_time = end_time
@@ -104,6 +144,35 @@ class GenerateVideoService
 
       VideoSubtitle.new(start_time, end_time, speaker, text, style)
     end
+  end
+
+  def wrap_text(text)
+    return text if text_width(text) <= MAX_LINE_WIDTH
+
+    morphemes = []
+    Natto::MeCab.new.parse(text) { |node| morphemes << node.surface unless node.surface.empty? }
+
+    lines         = []
+    current       = ""
+    current_width = 0.0
+
+    morphemes.each do |m|
+      w = text_width(m)
+      if current_width + w > MAX_LINE_WIDTH && !current.empty?
+        lines << current
+        current       = m
+        current_width = w
+      else
+        current       += m
+        current_width += w
+      end
+    end
+    lines << current unless current.empty?
+    lines.join(CUSTOM_BR_CODE)
+  end
+
+  def text_width(str)
+    str.chars.sum { |c| c.ord < 256 ? FONT_SIZE * 0.5 : FONT_SIZE.to_f }
   end
 
   def write_ass_subtitle(subtitles)
