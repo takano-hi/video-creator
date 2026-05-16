@@ -72,6 +72,20 @@ class McpController < ApplicationController
         },
         required: ["directory"]
       }
+    },
+    {
+      name: "import_json_from_google_slides",
+      description: "Google Slides の URL を受け取り、スライドの内容を JSON としてインポートする",
+      inputSchema: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "Google Slides の URL"
+          }
+        },
+        required: ["url"]
+      }
     }
   ].freeze
 
@@ -121,6 +135,9 @@ class McpController < ApplicationController
     when "generate_video"
       output_path = run_generate_video(_args["directory"])
       { content: [ { type: "text", text: output_path } ] }
+    when "import_json_from_google_slides"
+      result = ImportJsonFromGoogleSlidesService.new(_args["url"]).call
+      { content: [ { type: "text", text: result.to_s } ] }
     else
       raise "Unknown tool: #{name}"
     end
