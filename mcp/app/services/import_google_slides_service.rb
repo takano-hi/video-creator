@@ -1,4 +1,4 @@
-class ImportJsonFromGoogleSlidesService
+class ImportGoogleSlidesService
   GOOGLE_SLIDES_PREFIX = "https://docs.google.com/presentation/d/"
   SCOPES = ["https://www.googleapis.com/auth/presentations.readonly"].freeze
 
@@ -11,14 +11,19 @@ class ImportJsonFromGoogleSlidesService
     raise ArgumentError, "URL must start with #{GOOGLE_SLIDES_PREFIX}" unless @url.start_with?(GOOGLE_SLIDES_PREFIX)
     raise ArgumentError, "Directory not found: #{@directory}" unless Dir.exist?(@directory)
 
+    slides_dir = File.join(@directory, "slides")
+    Dir.mkdir(slides_dir) unless Dir.exist?(slides_dir)
+
     presentation = slides_service.get_presentation(presentation_id)
 
-    slides = presentation.slides.map do |slide|
+    slides = presentation.slides.each_with_index.map do |slide, i|
       page_id = slide.object_id_prop
+      thumbnail_url = fetch_thumbnail_url(page_id)
+      thumbnail = download_thumbnail(thumbnail_url, i + 1, slides_dir)
       {
         object_id:     page_id,
         speaker_notes: extract_speaker_notes(slide),
-        thumbnail_url: fetch_thumbnail_url(page_id)
+        thumbnail:     thumbnail
       }
     end
 
@@ -76,5 +81,33 @@ class ImportJsonFromGoogleSlidesService
   def fetch_thumbnail_url(page_object_id)
     thumbnail = slides_service.get_presentation_page_thumbnail(presentation_id, page_object_id)
     thumbnail.content_url
+  end
+
+  def download_thumbnail(url, index, slides_dir)
+    uri = URI.parse(url)
+    response = http_get_with_redirect(uri)
+
+    content_type = response["Content-Type"].to_s.split(";").first.strip
+    ext = File.extname(uri.path).presence || ".#{content_type.split('/').last}"
+    filename = "#{index.to_s.rjust(3, '0')}#{ext}"
+
+    File.binwrite(File.join(slides_dir, filename), response.body)
+    File.join("slides", filename)
+  end
+
+  def http_get_with_redirect(uri, limit = 5)
+    raise "Too many redirects" if limit == 0
+
+    response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https") do |http|
+      http.get(uri.request_uri)
+    end
+
+    if response.is_a?(Net::HTTPRedirection)
+      location = URI.parse(response["Location"])
+      location = uri + location if location.relative?
+      http_get_with_redirect(location, limit - 1)
+    else
+      response
+    end
   end
 end
