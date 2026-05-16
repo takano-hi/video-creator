@@ -1,9 +1,10 @@
 services:
-  web:
+  api:
     build: ./mcp
     ports:
       - "3000:80"
     environment:
+      RAILS_ENV: development
       VOICEVOX_BASE_URL: http://voicevox:50021
     volumes:
       - ./mcp/config/master.key:/rails/config/master.key:ro
@@ -19,8 +20,8 @@ services:
     ports:
       - "50021:50021"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:50021/version"]
-      interval: 10s
+      test: ["CMD", "echo", "http://localhost:50021/version"]
+      interval: 3s
       timeout: 5s
       retries: 5
       start_period: 30s
