@@ -4,7 +4,9 @@
 
 VOICEVOX でずんだもん・四国めたんの音声を合成し、字幕付き MP4 を出力する。
 
-## 事前準備
+動画の素材には **カバー画像（cover.png）** または **Google スライド** の2通りが使える。
+
+## セットアップ
 
 ### 1. サーバーを起動する
 
@@ -35,9 +37,9 @@ curl http://localhost:3000/up
 }
 ```
 
-設定後、Claude Code を再起動すると `generate_audio` / `generate_subtitle_csv` / `generate_video` ツールが利用できるようになる。
+設定後、Claude Code を再起動すると各種ツールが利用できるようになる。
 
-### 3. Google Slides API を設定する（`import_json_from_google_slides` を使う場合）
+### 3. Google Slides API を設定する（`import_google_slides` を使う場合）
 
 1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクトを作成し、**Google Slides API** を有効化する
 2. 「IAM と管理」→「サービスアカウント」からサービスアカウントを作成し、JSON キーをダウンロードする
@@ -49,24 +51,24 @@ GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"..."}
 
 > JSON 内の改行や特殊文字が問題になる場合は、一行に整形した上で設定する。
 
-## 毎回の作業
+4. Google Drive に作業用フォルダを作成し、そのフォルダの閲覧権限をサービスアカウントのメールアドレスに付与する
 
-### 1. cover.png を所定の場所に置く
+> フォルダごと共有しておくと、フォルダ内に追加したスライドにも権限が自動的に引き継がれるため、スライドを追加するたびに権限設定をやり直す手間がなくなる。
 
-紹介する本の表紙画像を以下のパスに配置する:
+## 使い方
+
+### パターン A：カバー画像から生成する
+
+本の表紙画像（cover.png）と Claude が書いたスクリプトをもとに動画を生成する。
+
+**必要なファイル:**
 
 ```
-video-creator/tmp/cover.png
+tmp/<作業ディレクトリ>/
+  cover.png       # 本の表紙画像
 ```
 
-### 2. Claude に依頼する
-
-Claude に以下を伝えるだけで動画が生成される:
-
-- 本のタイトルと著者
-- 本の感想・印象に残った点・伝えたい方向性
-
-例:
+**Claude への依頼例:**
 
 ```
 プロジェクト・ヘイル・メアリーをミルクボーイ風に紹介するプロットを作ってください。
@@ -78,19 +80,41 @@ Claude に以下を伝えるだけで動画が生成される:
 ・最後の最後まで結末がどうなるか分からないハラハラドキドキ感がたまらない
 ・映画化もしてるらしい　大きな改変もなく、原作ファンも大満足な内容
 ・科学知識をもとに問題を解決していく痛快さがたまらない
-・宇宙を舞台に人間同士が助け合って困難を乗り越えていく話ではない
-・人間ドラマ的な側面も面白い　グレースの地球での決断と宇宙での決断の対比とか、グレースが宇宙船に乗ることになる衝撃的な経緯とか
 ```
 
-Claudeがスクリプト作成 → 音声生成 → 字幕生成 → 動画生成まで自動で行い、
-生成された `video.mp4` のパスを返す。
+Claude がスクリプト作成 → `generate_audio` で音声生成 → `generate_subtitle_csv` で字幕生成 → `generate_video_from_cover` で動画生成まで自動で行い、`video.mp4` のパスを返す。
+
+### パターン B：Google スライドから生成する
+
+Google スライドのスピーカーノートをセリフとして読み取り、動画を生成する。字幕 CSV はスピーカーノートから自動生成される。
+
+**スライドの準備:**
+
+スライドのスピーカーノートを以下の形式で記述する:
+
+```
+ずんだもん: 『失敗の科学』という本を知ってる？
+四国めたん: 知らないわ。どんな本なの？
+ずんだもん: 組織が失敗から学習して改善するために必要なことが書かれた本なんだ。
+```
+
+**Claude への依頼例:**
+
+```
+以下の Google スライドをインポートして、音声を生成し、動画を作ってください。
+https://docs.google.com/presentation/d/xxxxxxxx
+保存先: /rails/tmp/my-book
+```
+
+Claude が `import_google_slides` でスライドをインポート → `generate_audio` で音声生成 → `generate_video_from_slides` で字幕生成・動画生成まで自動で行い、`video.mp4` のパスを返す。
 
 ## MCP ツール一覧
 
-| ツール名                          | 説明                                               |
-| --------------------------------- | -------------------------------------------------- |
-| `get_speakers`                    | 利用可能なスピーカー一覧を返す                     |
-| `generate_audio`                  | テキストリストから WAV ファイルを生成する          |
-| `generate_subtitle_csv`           | 字幕 CSV を生成する                                |
-| `generate_video`                  | cover.png + subtitle.csv + WAV から MP4 を生成する |
-| `import_json_from_google_slides`  | Google Slides の内容を JSON としてインポートする   |
+| ツール名 | 説明 |
+| --- | --- |
+| `get_speakers` | VOICEVOX で利用可能なスピーカー（声優）の一覧をスタイル ID とともに返す |
+| `generate_audio` | テキストとスピーカー ID のリストから WAV ファイルを生成する。`directory` を省略するとタイムスタンプ付きの一時ディレクトリに保存される |
+| `generate_subtitle_csv` | スピーカー名とテキストの行リストから `subtitle.csv` を生成する |
+| `generate_video_from_cover` | `cover.png` / `subtitle.csv` / `*.wav` をもとに `video.mp4` を生成する |
+| `generate_video_from_slides` | `google-slides.json` / `*.wav` をもとに字幕 CSV を自動生成して `video.mp4` を生成する |
+| `import_google_slides` | Google Slides の URL からスライド内容と各スライドのサムネイル画像をインポートし、`google-slides.json` と `slides/` ディレクトリに保存する |

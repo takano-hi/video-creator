@@ -60,14 +60,28 @@ class McpController < ApplicationController
       }
     },
     {
-      name: "generate_video",
-      description: "指定ディレクトリ内の subtitle.csv / *.wav と、cover.png または google-slides.json をもとに video.mp4 を生成する",
+      name: "generate_video_from_cover",
+      description: "cover.png / subtitle.csv / *.wav をもとに video.mp4 を生成する",
       inputSchema: {
         type: "object",
         properties: {
           directory: {
             type: "string",
-            description: "動画素材が格納されたディレクトリの絶対パス（出力先も同じ）。cover.png を使う場合は subtitle.csv と *.wav が必要。google-slides.json を使う場合は *.wav のみ必要"
+            description: "cover.png・subtitle.csv・*.wav が格納されたディレクトリの絶対パス（出力先も同じ）"
+          }
+        },
+        required: ["directory"]
+      }
+    },
+    {
+      name: "generate_video_from_slides",
+      description: "google-slides.json / *.wav をもとに字幕CSVを自動生成して video.mp4 を生成する",
+      inputSchema: {
+        type: "object",
+        properties: {
+          directory: {
+            type: "string",
+            description: "google-slides.json・slides/（サムネイル画像）・*.wav が格納されたディレクトリの絶対パス（出力先も同じ）"
           }
         },
         required: ["directory"]
@@ -136,8 +150,11 @@ class McpController < ApplicationController
     when "generate_subtitle_csv"
       output_path = write_subtitle_csv(_args["directory"], _args["lines"] || [])
       { content: [ { type: "text", text: output_path } ] }
-    when "generate_video"
-      output_path = GenerateVideoService.new(_args["directory"]).call
+    when "generate_video_from_cover"
+      output_path = GenerateVideoFromCoverService.new(_args["directory"]).call
+      { content: [ { type: "text", text: output_path } ] }
+    when "generate_video_from_slides"
+      output_path = GenerateVideoFromSlidesService.new(_args["directory"]).call
       { content: [ { type: "text", text: output_path } ] }
     when "import_google_slides"
       output_path = ImportGoogleSlidesService.new(_args["url"], _args["directory"]).call
