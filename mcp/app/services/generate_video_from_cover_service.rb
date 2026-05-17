@@ -1,7 +1,8 @@
 class GenerateVideoFromCoverService
-  def initialize(dir)
-    @dir  = dir
-    @base = GenerateVideoBaseService.new(dir)
+  def initialize(dir, ending_image: nil)
+    @dir          = dir
+    @ending_image = ending_image
+    @base         = GenerateVideoBaseService.new(dir)
   end
 
   def call
@@ -18,6 +19,11 @@ class GenerateVideoFromCoverService
 
     assemble_video
 
+    if @ending_image
+      ending_path = File.join(@dir, @ending_image)
+      @base.append_ending_image(ending_path) if File.exist?(ending_path)
+    end
+
     File.join(@dir, "video.mp4")
   end
 
@@ -31,7 +37,7 @@ class GenerateVideoFromCoverService
   end
 
   def clear_outputs
-    %w[merged.mp3 subtitle.ass subtitle.srt video.mp4].each do |f|
+    %w[merged.mp3 subtitle.ass subtitle.srt video.mp4 video_main.mp4].each do |f|
       path = File.join(@dir, f)
       File.delete(path) if File.exist?(path)
     end
@@ -44,6 +50,6 @@ class GenerateVideoFromCoverService
     output   = Shellwords.escape(File.join(@dir, "video.mp4"))
 
     system("ffmpeg -loop 1 -i #{cover} -i #{audio} -vf \"ass=#{subtitle}\" " \
-           "-c:v libx264 -tune stillimage -c:a aac -b:a 192k -shortest -pix_fmt yuv420p #{output}")
+           "-c:v libx264 -bf 0 -tune stillimage -c:a alac -shortest -pix_fmt yuv420p #{output}")
   end
 end

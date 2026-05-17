@@ -96,6 +96,37 @@ class GenerateVideoBaseService
     File.write(File.join(@dir, "subtitle.srt"), content)
   end
 
+  def append_ending_image(ending_image_path, duration = 3)
+    video_path   = File.join(@dir, "video.mp4")
+    temp_path    = File.join(@dir, "video_main.mp4")
+    ending_path  = File.join(@dir, "video_ending.mp4")
+    concat_file  = File.join(@dir, "concat_list.txt")
+
+    File.rename(video_path, temp_path)
+
+    dimensions = `ffprobe -v quiet -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 #{Shellwords.escape(temp_path)}`.strip
+    width, height = dimensions.split("x").map(&:to_i)
+
+    audio_info = `ffprobe -v quiet -select_streams a:0 -show_entries stream=sample_rate,channels -of csv=p=0 #{Shellwords.escape(temp_path)}`.strip
+    sample_rate, channels = audio_info.split(",").map(&:to_i)
+    channel_layout = channels == 1 ? "mono" : "stereo"
+
+    ending_cmd = "ffmpeg -loop 1 -t #{duration} -i #{Shellwords.escape(ending_image_path)} " \
+                 "-f lavfi -t #{duration} -i anullsrc=r=#{sample_rate}:cl=#{channel_layout} " \
+                 "-vf \"scale=#{width}:#{height}:force_original_aspect_ratio=decrease,pad=#{width}:#{height}:(ow-iw)/2:(oh-ih)/2\" " \
+                 "-c:v libx264 -bf 0 -c:a alac -pix_fmt yuv420p -shortest #{Shellwords.escape(ending_path)}"
+    system(ending_cmd)
+
+    File.write(concat_file, "file '#{temp_path}'\nfile '#{ending_path}'\n")
+
+    concat_cmd = "ffmpeg -f concat -safe 0 -i #{Shellwords.escape(concat_file)} -c copy #{Shellwords.escape(video_path)}"
+    system(concat_cmd)
+
+    File.delete(temp_path) if File.exist?(temp_path)
+    File.delete(ending_path) if File.exist?(ending_path)
+    File.delete(concat_file) if File.exist?(concat_file)
+  end
+
   private
 
   def format_ass_time(seconds)

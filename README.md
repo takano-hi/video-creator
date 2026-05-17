@@ -115,6 +115,6 @@ Claude が `import_google_slides` でスライドをインポート → `generat
 | `get_speakers` | VOICEVOX で利用可能なスピーカー（声優）の一覧をスタイル ID とともに返す |
 | `generate_audio` | テキストとスピーカー ID のリストから WAV ファイルを生成する。`directory` を省略するとタイムスタンプ付きの一時ディレクトリに保存される |
 | `generate_subtitle_csv` | スピーカー名とテキストの行リストから `subtitle.csv` を生成する |
-| `generate_video_from_cover` | `cover.png` / `subtitle.csv` / `*.wav` をもとに `video.mp4` を生成する |
-| `generate_video_from_slides` | `google-slides.json` / `*.wav` をもとに字幕 CSV を自動生成して `video.mp4` を生成する |
+| `generate_video_from_cover` | `cover.png` / `subtitle.csv` / `*.wav` をもとに `video.mp4` を生成する。`ending_image` を指定するとディレクトリ内の対応するファイルを動画末尾に3秒間表示する |
+| `generate_video_from_slides` | `google-slides.json` / `*.wav` をもとに字幕 CSV を自動生成して `video.mp4` を生成する。`ending_image` を指定するとディレクトリ内の対応するファイルを動画末尾に3秒間表示する |
 | `import_google_slides` | Google Slides の URL からスライド内容と各スライドのサムネイル画像をインポートし、`google-slides.json` と `slides/` ディレクトリに保存する |

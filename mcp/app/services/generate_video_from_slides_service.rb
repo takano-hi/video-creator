@@ -1,9 +1,10 @@
 class GenerateVideoFromSlidesService
   MAX_LINE_WIDTH = GenerateVideoBaseService::PLAY_RES_X * 0.8
 
-  def initialize(dir)
-    @dir  = dir
-    @base = GenerateVideoBaseService.new(dir)
+  def initialize(dir, ending_image: nil)
+    @dir          = dir
+    @ending_image = ending_image
+    @base         = GenerateVideoBaseService.new(dir)
   end
 
   def call
@@ -20,6 +21,11 @@ class GenerateVideoFromSlidesService
     @base.write_srt_subtitle(subtitles)
 
     assemble_video(wav_files)
+
+    if @ending_image
+      ending_path = File.join(@dir, @ending_image)
+      @base.append_ending_image(ending_path) if File.exist?(ending_path)
+    end
 
     File.join(@dir, "video.mp4")
   end
@@ -41,7 +47,7 @@ class GenerateVideoFromSlidesService
   end
 
   def clear_outputs
-    %w[merged.mp3 subtitle.ass subtitle.srt subtitle.csv video.mp4].each do |f|
+    %w[merged.mp3 subtitle.ass subtitle.srt subtitle.csv video.mp4 video_main.mp4].each do |f|
       path = File.join(@dir, f)
       File.delete(path) if File.exist?(path)
     end
@@ -80,7 +86,7 @@ class GenerateVideoFromSlidesService
     cmd = "ffmpeg #{inputs} -i #{audio} " \
           "-filter_complex \"#{concat}concat=n=#{n}:v=1:a=0[v];[v]ass=#{subtitle}[vout]\" " \
           "-map \"[vout]\" -map \"#{n}:a\" " \
-          "-c:v libx264 -c:a aac -b:a 192k -shortest -pix_fmt yuv420p #{output}"
+          "-c:v libx264 -bf 0 -c:a alac -shortest -pix_fmt yuv420p #{output}"
     system(cmd)
   end
 

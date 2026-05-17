@@ -68,6 +68,10 @@ class McpController < ApplicationController
           directory: {
             type: "string",
             description: "cover.png・subtitle.csv・*.wav が格納されたディレクトリの絶対パス（出力先も同じ）"
+          },
+          ending_image: {
+            type: "string",
+            description: "動画の末尾に3秒間表示する画像のファイル名（directory 内に存在する場合のみ適用）"
           }
         },
         required: ["directory"]
@@ -82,6 +86,10 @@ class McpController < ApplicationController
           directory: {
             type: "string",
             description: "google-slides.json・slides/（サムネイル画像）・*.wav が格納されたディレクトリの絶対パス（出力先も同じ）"
+          },
+          ending_image: {
+            type: "string",
+            description: "動画の末尾に3秒間表示する画像のファイル名（directory 内に存在する場合のみ適用）"
           }
         },
         required: ["directory"]
@@ -151,10 +159,10 @@ class McpController < ApplicationController
       output_path = write_subtitle_csv(_args["directory"], _args["lines"] || [])
       { content: [ { type: "text", text: output_path } ] }
     when "generate_video_from_cover"
-      output_path = GenerateVideoFromCoverService.new(_args["directory"]).call
+      output_path = GenerateVideoFromCoverService.new(_args["directory"], ending_image: _args["ending_image"]).call
       { content: [ { type: "text", text: output_path } ] }
     when "generate_video_from_slides"
-      output_path = GenerateVideoFromSlidesService.new(_args["directory"]).call
+      output_path = GenerateVideoFromSlidesService.new(_args["directory"], ending_image: _args["ending_image"]).call
       { content: [ { type: "text", text: output_path } ] }
     when "import_google_slides"
       output_path = ImportGoogleSlidesService.new(_args["url"], _args["directory"]).call
