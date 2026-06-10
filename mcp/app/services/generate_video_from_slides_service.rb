@@ -86,7 +86,7 @@ class GenerateVideoFromSlidesService
     cmd = "ffmpeg #{inputs} -i #{audio} " \
           "-filter_complex \"#{concat}concat=n=#{n}:v=1:a=0[v];[v]ass=#{subtitle}[vout]\" " \
           "-map \"[vout]\" -map \"#{n}:a\" " \
-          "-c:v libx264 -bf 0 -c:a alac -shortest -pix_fmt yuv420p #{output}"
+          "-c:v libx264 -bf 0 -c:a aac -b:a 128k -shortest -pix_fmt yuv420p #{output}"
     system(cmd)
   end
 

@@ -114,7 +114,7 @@ class GenerateVideoBaseService
     ending_cmd = "ffmpeg -loop 1 -t #{duration} -i #{Shellwords.escape(ending_image_path)} " \
                  "-f lavfi -t #{duration} -i anullsrc=r=#{sample_rate}:cl=#{channel_layout} " \
                  "-vf \"scale=#{width}:#{height}:force_original_aspect_ratio=decrease,pad=#{width}:#{height}:(ow-iw)/2:(oh-ih)/2\" " \
-                 "-c:v libx264 -bf 0 -c:a alac -pix_fmt yuv420p -shortest #{Shellwords.escape(ending_path)}"
+                 "-c:v libx264 -bf 0 -c:a aac -b:a 128k -pix_fmt yuv420p -shortest #{Shellwords.escape(ending_path)}"
     system(ending_cmd)
 
     File.write(concat_file, "file '#{temp_path}'\nfile '#{ending_path}'\n")

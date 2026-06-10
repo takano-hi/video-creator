@@ -50,6 +50,6 @@ class GenerateVideoFromCoverService
     output   = Shellwords.escape(File.join(@dir, "video.mp4"))
 
     system("ffmpeg -loop 1 -i #{cover} -i #{audio} -vf \"ass=#{subtitle}\" " \
-           "-c:v libx264 -bf 0 -tune stillimage -c:a alac -shortest -pix_fmt yuv420p #{output}")
+           "-c:v libx264 -bf 0 -tune stillimage -c:a aac -b:a 128k -shortest -pix_fmt yuv420p #{output}")
   end
 end
